@@ -6,6 +6,7 @@ export class Action {
   readonly index: number
   readonly eventTarget: EventTarget
   readonly eventName: string
+  readonly eventPipeNames: string[]
   readonly eventOptions: AddEventListenerOptions
   readonly identifier: string
   readonly methodName: string
@@ -15,18 +16,20 @@ export class Action {
   }
 
   constructor(element: Element, index: number, descriptor: Partial<ActionDescriptor>) {
-    this.element      = element
-    this.index        = index
-    this.eventTarget  = descriptor.eventTarget || element
-    this.eventName    = descriptor.eventName || getDefaultEventNameForElement(element) || error("missing event name")
-    this.eventOptions = descriptor.eventOptions || {}
-    this.identifier   = descriptor.identifier || error("missing identifier")
-    this.methodName   = descriptor.methodName || error("missing method name")
+    this.element        = element
+    this.index          = index
+    this.eventTarget    = descriptor.eventTarget || element
+    this.eventName      = descriptor.eventName || getDefaultEventNameForElement(element) || error("missing event name")
+    this.eventPipeNames = descriptor.eventPipeNames || []
+    this.eventOptions   = descriptor.eventOptions || {}
+    this.identifier     = descriptor.identifier || error("missing identifier")
+    this.methodName     = descriptor.methodName || error("missing method name")
   }
 
   toString() {
     const eventNameSuffix = this.eventTargetName ? `@${this.eventTargetName}` : ""
-    return `${this.eventName}${eventNameSuffix}->${this.identifier}#${this.methodName}`
+    const eventPipeline = this.eventPipeNames.length ? `|${this.eventPipeNames.join("|")}` : ""
+    return `${this.eventName}${eventNameSuffix}${eventPipeline}->${this.identifier}#${this.methodName}`
   }
 
   private get eventTargetName() {

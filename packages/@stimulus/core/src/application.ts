@@ -2,6 +2,8 @@ import { Controller, ControllerConstructor } from "./controller"
 import { Definition } from "./definition"
 import { Dispatcher } from "./dispatcher"
 import { ErrorHandler } from "./error_handler"
+import { EventPipeline } from "./event_pipeline"
+import { defaultStaticPipes, defaultDynamicPipes } from "./default_pipes"
 import { Router } from "./router"
 import { Schema, defaultSchema } from "./schema"
 
@@ -10,6 +12,7 @@ export class Application implements ErrorHandler {
   readonly schema: Schema
   readonly dispatcher: Dispatcher
   readonly router: Router
+  readonly eventPipeline: EventPipeline
 
   static start(element?: Element, schema?: Schema): Application {
     const application = new Application(element, schema)
@@ -22,6 +25,7 @@ export class Application implements ErrorHandler {
     this.schema = schema
     this.dispatcher = new Dispatcher(this)
     this.router = new Router(this)
+    this.eventPipeline = new EventPipeline(defaultStaticPipes, defaultDynamicPipes);
   }
 
   async start() {

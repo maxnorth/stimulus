@@ -2,6 +2,7 @@ import { Action } from "./action"
 import { Context } from "./context"
 import { Controller } from "./controller"
 import { Scope } from "./scope"
+import { EventPipeline } from "./event_pipeline"
 
 export class Binding {
   readonly context: Context
@@ -29,7 +30,7 @@ export class Binding {
   }
 
   handleEvent(event: Event) {
-    if (this.willBeInvokedByEvent(event)) {
+    if (this.willBeInvokedByEvent(event) && this.passesThroughPipeline(event)) {
       this.invokeWithEvent(event)
     }
   }
@@ -81,5 +82,17 @@ export class Binding {
 
   private get scope(): Scope {
     return this.context.scope
+  }
+
+  private get pipeNames(): string[] {
+    return this.action.eventPipeNames
+  }
+
+  private get eventPipeline(): EventPipeline {
+    return this.context.application.eventPipeline
+  }
+
+  private passesThroughPipeline(event: Event): boolean {
+    return event === this.eventPipeline.run(event, this.pipeNames)
   }
 }

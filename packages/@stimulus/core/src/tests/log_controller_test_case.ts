@@ -9,10 +9,10 @@ export class LogControllerTestCase extends ControllerTestCase<LogController> {
     await super.setup()
   }
 
-  assertActions(...actions: any[]) {
+  assertActions(...actions: Partial<ActionLogEntry>[]) {
     this.assert.equal(this.actionLog.length, actions.length)
 
-    actions.forEach((expected, index) => {
+    actions.forEach((expected: any, index) => {
       const keys = Object.keys(expected)
       const actual = slice(this.actionLog[index] || {}, keys)
       const result = keys.every(key => expected[key] === actual[key])
@@ -26,6 +26,10 @@ export class LogControllerTestCase extends ControllerTestCase<LogController> {
 
   get actionLog(): ActionLogEntry[] {
     return this.controllerConstructor.actionLog
+  }
+
+  clearActionLog() {
+    this.controllerConstructor.actionLog = []
   }
 }
 

@@ -3,7 +3,7 @@ import { Definition } from "./definition"
 import { Dispatcher } from "./dispatcher"
 import { ErrorHandler } from "./error_handler"
 import { EventPipeline } from "./event_pipeline"
-import { defaultStaticPipes, defaultDynamicPipes } from "./default_pipes"
+import { defaultEventPipes } from "./event_pipes"
 import { Router } from "./router"
 import { Schema, defaultSchema } from "./schema"
 
@@ -25,7 +25,7 @@ export class Application implements ErrorHandler {
     this.schema = schema
     this.dispatcher = new Dispatcher(this)
     this.router = new Router(this)
-    this.eventPipeline = new EventPipeline(defaultStaticPipes, defaultDynamicPipes);
+    this.eventPipeline = new EventPipeline(defaultEventPipes)
   }
 
   async start() {

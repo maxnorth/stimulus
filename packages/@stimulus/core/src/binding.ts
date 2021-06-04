@@ -30,7 +30,7 @@ export class Binding {
   }
 
   handleEvent(event: Event) {
-    if (this.willBeInvokedByEvent(event) && this.passesThroughPipeline(event)) {
+    if (this.willBeInvokedByEvent(event) && this.passesPipeSequence(event)) {
       this.invokeWithEvent(event)
     }
   }
@@ -84,7 +84,7 @@ export class Binding {
     return this.context.scope
   }
 
-  private get pipeNames(): string[] {
+  private get eventPipeNames(): string[] {
     return this.action.eventPipeNames
   }
 
@@ -92,7 +92,13 @@ export class Binding {
     return this.context.application.eventPipeline
   }
 
-  private passesThroughPipeline(event: Event): boolean {
-    return event === this.eventPipeline.run(event, this.pipeNames)
+  private passesPipeSequence(event: Event): boolean {
+    try {
+      return this.eventPipeline.runPipeSequence(event, this.eventPipeNames)
+    }
+    catch (error) {
+      this.context.handleError(error, `running event pipe sequence ${this.eventName}|${this.eventPipeNames.join("|")}`)
+      return false
+    }
   }
 }

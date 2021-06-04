@@ -1,64 +1,89 @@
-export interface SimpleEventPipe {
-    name: string
-    pipe: (event: Event) => Event|undefined
+export interface EventPipe {
+  name: string
+  pipe: (event: Event) => boolean
 }
 
-export interface DynamicEventPipe<TEvent extends Event, TMatchResult> {
-    name: string
-    match: (id: string) => TMatchResult|undefined
-    pipe: (event: TEvent, matchResult: TMatchResult) => TEvent|undefined
+export interface DynamicEventPipe<TMatchResult> {
+  name: string
+  priority?: number
+  match: (id: string) => TMatchResult | undefined
+  pipe: (event: Event, matchResult: TMatchResult) => boolean
 }
 
-type PipeHandler = { pipe: (event: Event, matchResult: any) => Event|undefined, matchResult?: any }
+type PipeReference = { pipe: (event: Event, matchResult: any) => boolean, matchResult?: any }
 
 export class EventPipeline {
 
-    private readonly staticPipes: { [key: string]: SimpleEventPipe } = {}
-    private readonly dynamicPipes: DynamicEventPipe<Event, any>[] = []
-    private readonly cachedDynamicPipes: { [key: string]: PipeHandler } = {}
-    
-    constructor(initialStaticPipes: SimpleEventPipe[], initialDynamicPipes: DynamicEventPipe<Event, any>[]) {
-        this.staticPipes = {}
-        for (const staticPipe of initialStaticPipes) {
-            this.staticPipes[staticPipe.name] = staticPipe
+  private simplePipes: { [key: string]: EventPipe }
+  private dynamicPipes: DynamicEventPipe<any>[]
+
+  constructor(initialPipes: (EventPipe | DynamicEventPipe<any>)[]) {
+    this.simplePipes = {}
+    this.dynamicPipes = []
+    this.addPipes(initialPipes)
+  }
+
+  runPipeSequence(event: Event, pipeNames: string[]): boolean {
+    this.sortDynamicPipesByPriority()
+    for (const name of pipeNames) {
+      const { pipe, matchResult } = this.getPipe(name)
+      try {
+        if (!pipe(event, matchResult)) {
+          return false
         }
-        this.dynamicPipes = initialDynamicPipes || []
+      }
+      catch {
+        console.warn("error found while using pipe. *** need to log this to context")
+      }
+    }
+    return true
+  }
+
+  private sortDynamicPipesByPriority() {
+    this.dynamicPipes.sort((left, right) => {
+      const leftPriority = getPipePriority(left), rightPriority = getPipePriority(right)
+      return leftPriority > rightPriority ? -1 : leftPriority < rightPriority ? 1 : 0
+    })
+  }
+
+  private getPipe(pipeId: string): PipeReference {
+    const foundSimplePipe = this.simplePipes[pipeId]
+    if (foundSimplePipe) {
+      return { pipe: foundSimplePipe.pipe, matchResult: undefined }
     }
 
-    run(event: Event, pipeIds: string[]) {
-        for (const pipeId of pipeIds) {
-            const { pipe, matchResult } = this.getPipe(pipeId)
-            try {
-                if (event !== pipe(event, matchResult)) {
-                    return undefined
-                }
-            }
-            catch {
-                console.warn("error found while using pipe. *** need to log this to context")
-            }
-        }
-        return event
+    for (const dynamicPipe of this.dynamicPipes) {
+      const matchResult = dynamicPipe.match(pipeId), pipe = dynamicPipe.pipe
+      if (matchResult !== undefined) {
+        return { pipe, matchResult }
+      }
     }
 
-    private getPipe(pipeId: string): PipeHandler {
+    throw new Error(`No event pipes found matching id '${pipeId}'`)
+  }
 
-        let foundSimplePipe = this.staticPipes[pipeId]
-        if (foundSimplePipe) {
-            return { pipe: foundSimplePipe.pipe, matchResult: undefined }
-        }
-
-        let foundCachedDynamicPipe = this.cachedDynamicPipes[pipeId]
-        if (foundCachedDynamicPipe) {
-            return foundCachedDynamicPipe
-        }
-
-        for (let dynamicPipe of this.dynamicPipes) {
-            let matchResult = dynamicPipe.match(pipeId), pipe = dynamicPipe.pipe
-            if (matchResult !== undefined) {
-                return this.cachedDynamicPipes[pipeId] = { pipe,  matchResult }
-            }
-        }
-
-        throw new Error(`No event pipes found matching id '${pipeId}'`)
+  addPipes(pipes: (EventPipe|DynamicEventPipe<any>)[]): void {
+    for (const pipe of pipes) {
+      if ("match" in pipe) {
+        this.dynamicPipes.push(pipe)
+      }
+      else {
+        this.simplePipes[pipe.name] = pipe
+      }
     }
+  }
+
+  removePipe(name: string) {
+    delete this.simplePipes[name]
+    this.dynamicPipes = this.dynamicPipes.filter(pipe => pipe.name !== name)
+  }
+
+  clearPipes() {
+    this.simplePipes = {}
+    this.dynamicPipes = []
+  }
+}
+
+function getPipePriority({ priority }: DynamicEventPipe<any>): number {
+  return typeof priority === "number" ? priority : 1
 }
